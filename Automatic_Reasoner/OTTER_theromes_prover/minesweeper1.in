@@ -1,0 +1,294 @@
+%==============================================================================
+% Formalización
+%==============================================================================
+
+% Configuración del sistema
+
+set(binary_res).
+assign(max_proofs,-1).
+% He tenido que añadir esto porque me limitaba las demostraciones
+
+%set(para_into).
+%set(para_from).
+%set(auto2).
+
+%lenguaje del problema
+
+%Constantes:
+% x, y son las posiciones de las casillas en la tabla
+% una bomba en la posición bomba(x,y) no puede moverse
+% al principio se desconoce donde está vacio y bombas y el programa debe
+% descubrir donde están las bombas, nos debe dar las soluciones:
+%bomba(1,2) bomba(1,4) bomba(2,3) bomba(3,5) bomba(4,4) bomba(5,1) bomba(5,3).
+%solo conocemos incialmente la posicion de algunos sensores
+
+%Funciones
+%   r(x,y): la casilla derecha de (x,y)
+%   l(x,y): la casilla izquierda de (x,y)
+%   u(x,y): la casilla arriba de (x,y)
+%   d(x,y): la casilla abajo de (x,y) 
+
+make_evaluable(_+_, $SUM(_,_)).
+make_evaluable(_-_, $DIFF(_,_)).
+make_evaluable(_>_, $GT(_,_)).
+make_evaluable(_>=_, $GE(_,_)).
+
+
+list(demodulators).
+%comportamiento de las Funciones
+
+  yr(y) = (y+1).  %y right
+  yl(y) = (y-1).  %y left
+  xu(x) = (x-1).  %x up
+  xd(x) = (x+1).  %x down
+
+end_of_list.
+
+list(usable).
+%usable debe ser lo que coja cuando no queda nada en el conjunto de soporte
+  %bomba(x<6,y).
+  %bomba(x>0,y).
+  %bomba(x,y<6).
+  %bomba(x,y>0).
+  %bomba(x>5,y>5).
+  %bomba(x>5,y<1).
+  %bomba(x<1,y>5).
+  %bomba(x<1,y<1).
+
+  %all x (-bomba(x,0)).
+  %all x (-bomba(x,1)).
+ 
+  %vacio(x>5,y).
+  %vacio(x<1,y).
+  %vacio(x,y>5).
+  %vacio(x,y<1).
+  %vacio(x>5,y>5).
+  %vacio(x>5,y<1).
+  %vacio(x<1,y>5).
+  %vacio(x<1,y<1).
+
+
+ % all x (x>0).
+ % all y (y>0).
+ % all x (x<6).
+ % all y (y<6).
+
+
+end_of_list.
+
+formula_list(sos).
+ % filas(x).
+ % columnas(y).
+ % sensor(x,y,z).
+ % bomba(x,y).
+ % vacio(x,y).
+
+  filas(5).
+  columnas(5).
+  sensor(1,3,3).
+  sensor(2,4,2).
+  sensor(3,2,0).
+  sensor(4,1,1).
+  sensor(4,3,2).
+  sensor(4,5,2).
+  sensor(5,4,2).
+  
+  
+ 0 != 1.
+ 0 != 2.
+ 0 != 3.
+ 0 != 4.
+ 0 != 5.
+ 0 != 6.
+ 1 != 2.
+ 1 != 3.
+ 1 != 4.
+ 1 != 5.
+ 1 != 6.
+ 2 != 3.
+ 2 != 4.
+ 2 != 5.
+ 2 != 6.
+ 3 != 4.
+ 3 != 5.
+ 3 != 6.
+ 4 != 5.
+ 4 != 6.
+ 5 != 6.
+
+1-1=0.
+0+1=1.
+1+1=2.
+2+1=3.
+3+1=4.
+4+1=5.
+5+1=6.
+
+
+
+%0<1.
+%1<2.
+%6>5.
+
+
+ 0 = 0.
+ 1 = 1.
+ 2 = 2.
+ 3 = 3.
+ 4 = 4.
+ 5 = 5.
+ 6 = 6.
+
+
+
+
+
+%==============================================================================
+% %regla acotar filas y columnas
+%para evitar que Otter considere filas 0 y 6 y columnas 0 y 6, ya que estas no
+%existen en nuestro tablero y las reglas de sumar puede repercutir en considerarlas
+%si no se acotan las dimensiones del tablero.
+%para esto se obliga a que todo lo de fuera se considere vacio
+
+
+
+  all x vacio(x,0).
+  all x vacio(x,6).
+  
+  all y vacio(0,y).
+  all y vacio(6,y).
+
+
+%==============================================================================
+% %regla alguna bomba
+%si hay un sensor, implica no vacio para alguna casilla cercana
+
+ % all x y z xu xd yr yl (sensor(x,y,z) & z!=0 -> -vacio(xu(x),y) | -vacio(xd(x),y) | -vacio(x,yl(y)) | -vacio(x,yr(y)) ).
+%==============================================================================
+% % No bomba y no sensor es vacio
+% Si no hay una bomba o sensor, entonces está vacio
+
+%  all x y z (-bomba(x,y) & -sensor(x,y,z) -> vacio(x,y)).
+%regla problematica crea vacios
+
+%==============================================================================
+% % bomba es no vacio
+
+% all x y (bomba(x,y) -> -vacio(x,y)).
+
+%==============================================================================
+% % vacio es no bomba
+
+  all x y (vacio(x,y) -> -bomba(x,y)).
+
+%==============================================================================
+% % sensor implica no bomba
+
+  all x y (sensor(x,y,z) -> vacio(x,y)).
+
+%==============================================================================
+% % bomba cambia vacio a sensor
+
+%  all x y (bomba(x,y) & vacio(xd(x),y) -> sensor(xd(x),y)).
+%  all x y (bomba(x,y) & vacio(xu(x),y) -> sensor(xu(x),y)).
+%  all x y (bomba(x,y) & vacio(x,yl(y)) -> sensor(x,yr(y))).
+%  all x y (bomba(x,y) & vacio(x,yr(y)) -> sensor(x,yr(y))).
+
+
+
+
+%==============================================================================
+% % bomba implica sensor en todas las casillas cercanas
+
+%  all x y z xd xu yl yr (bomba(x,y)  -> sensor(xd(x),y,z) & sensor(xu(x),y,z) & sensor(x,yr(y),z) & sensor(x,yl(y),z) ).
+
+% all x y  xd xu yl yr (bomba(x,y)  -> sensor(xd(x),y) & sensor(xu(x),y) & sensor(x,yr(y)) & sensor(x,yl(y)) ).
+
+
+%==============================================================================
+% % Hay bomba segurisimo
+
+ %  all x y z xd xu yl yr (sensor(xd(x),y,z) & sensor(xu(x),y,z) & sensor(x,yr(y),z) & sensor(x,yl(y),z) -> bomba(x,y)).
+
+
+%==============================================================================
+%hay alguna bomba en alguna casilla
+  %all x y z xd xu yl yr (sensor(x,y,z) -> bomba(xu(x),y) | bomba(xd(x),y) | bomba(x,yr(y)) | bomba(x,yl(y))).
+
+
+%==============================================================================
+% %regla bomba por numero
+%si una casilla está tocando el mismo numero de casillas que el
+%número que tiene en su casilla, entonces estas casillas son
+%bombas
+
+  all x y xu xd yr yl (sensor(x,y,0) -> vacio(xu(x),y) & vacio(xd(x),y) & vacio(x,yl(y)) & vacio(x,yr(y))).
+
+  all x y xu xd yr yl (sensor(x,y,1) -> (bomba(xu(x),y) & vacio(xd(x),y) & vacio(x,yl(y)) & vacio(x,yr(y)))
+                                        |
+                                        (vacio(xu(x),y) & bomba(xd(x),y) & vacio(x,yl(y)) & vacio(x,yr(y)))
+                                        |
+                                        (vacio(xu(x),y) & vacio(xd(x),y) & bomba(x,yl(y)) & vacio(x,yr(y)))
+                                        |
+                                        (vacio(xu(x),y) & vacio(xd(x),y) & vacio(x,yl(y)) & bomba(x,yr(y)))
+                                         ).
+
+
+
+  all x y xu xd yr yl (sensor(x,y,2) -> (bomba(xu(x),y) & bomba(xd(x),y) & vacio(x,yr(y)) & vacio(x,yl(y)))
+                                        |
+                                        (vacio(xu(x),y) & vacio(xd(x),y) & bomba(x,yr(y)) & bomba(x,yl(y)))
+                                        |
+                                        (bomba(xu(x),y) & vacio(xd(x),y) & vacio(x,yr(y)) & bomba(x,yl(y)))
+                                        |
+                                        (bomba(xu(x),y) & vacio(xd(x),y) & bomba(x,yr(y)) & vacio(x,yl(y))) 
+                                        |
+                                        (vacio(xu(x),y) & bomba(xd(x),y) & bomba(x,yr(y)) & vacio(x,yl(y)))  
+                                        |
+                                        (vacio(xu(x),y) & bomba(xd(x),y) & vacio(x,yr(y)) & bomba(x,yl(y)))   
+                      ).
+
+  all x y xu xd yr yl (sensor(x,y,3) ->   (bomba(xu(x),y) & bomba(xd(x),y) & bomba(x,yr(y)) & vacio(x,yl(y)))
+                                          |
+                                          (bomba(xu(x),y) & bomba(xd(x),y) & vacio(x,yr(y)) & bomba(x,yl(y)))
+                                          |
+                                          (bomba(xu(x),y) & vacio(xd(x),y) & bomba(x,yr(y)) & bomba(x,yl(y)))
+                                          |
+                                          (vacio(xu(x),y) & bomba(xd(x),y) & bomba(x,yr(y)) & bomba(x,yl(y)))
+
+                      ).
+  
+    all x y xu xd yr yl (sensor(x,y,4) -> bomba(xu(x),y) & bomba(xd(x),y) & bomba(x,yr(y)) & bomba(x,yl(y))).
+
+
+%==============================================================================
+%==============================================================================
+% %regla liberación por numero
+
+%si hay una casilla con un número "n" y está tocando "n" bombas
+%si tiene otra casilla que está tocando "x,y" entonces
+% esta casilla está libre 
+
+
+%==============================================================================
+% % Sensor 3 de arriba
+
+% all x y xd xu yr (sensor(x,y,3) & -vacio(xu(x),y)  & -bomba(xu(x),y) & -sensor(xu(x),y) ->  bomba(xd(x),y) & bomba(x,yr(y)) & bomba(x,yl(y)) ). 
+%he probado esto a ver si Otter me dice alguna bomba pero no funciona, no consigo que Otter me diga la posición de ninguna bomba
+
+
+
+%==============================================================================
+
+
+
+
+end_of_list.
+
+formula_list(passive).
+
+%all x y (vacio(x,y)  -> $Ansvacio(x,y)).
+
+all x y (bomba(x,y)  -> $Ansbomba(x,y)).
+
+end_of_list.

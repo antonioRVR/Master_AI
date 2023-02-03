@@ -1,0 +1,218 @@
+%==============================================================================
+% Formalización
+%==============================================================================
+
+% Configuración del sistema
+
+%set(binary_res).
+set(hyper_res).
+%set(process_input).
+assign(max_proofs,-1).
+
+
+set(para_into).
+set(para_from).
+%set(auto2).
+
+%lenguaje del problema
+
+%Constantes:
+% x, y son las posiciones de las casillas en la tabla
+% una bomba en la posición bomba(x,y) no puede moverse
+% al principio se desconoce donde está vacio y bombas y el programa debe
+% descubrir donde están las bombas, nos debe dar las soluciones:
+%bomba(1,2) bomba(1,4) bomba(2,3) bomba(3,5) bomba(4,4) bomba(5,1) bomba(5,3).
+%solo conocemos incialmente la posicion de algunos sensores
+
+%Funciones
+%   r(x,y): la casilla derecha de (x,y)
+%   l(x,y): la casilla izquierda de (x,y)
+%   u(x,y): la casilla arriba de (x,y)
+%   d(x,y): la casilla abajo de (x,y) 
+
+make_evaluable(_+_, $SUM(_,_)).
+make_evaluable(_-_, $DIFF(_,_)).
+make_evaluable(_>_, $GT(_,_)).
+make_evaluable(_>=_, $GE(_,_)).
+
+
+
+%==============================================================================
+%================================
+%==============================================================================
+list(demodulators).
+%comportamiento de las Funciones
+
+%==============================================================================
+%% demodulador para crear las listas horizontales y verticales y asi construir
+%% el tablero
+
+lista_horizontal(x,y)=$IF($ID(y,0),
+                  [],
+                  [posicion(x,y)|lista_horizontal(x,y-1)]).
+
+lista_vertical(x,y)=$IF($ID(x,0),
+                  [],
+                  [posicion(x,y)|lista_vertical(x-1,y)]).
+
+
+%==============================================================================
+%% Verificación de pertenencia a una posición del tablero
+
+pertenece(posicion(x,y),[]) = $F.
+pertenece(posicion(x,y),[h|w]) = $IF($ID(posicion(x,y),h), $T, pertenece(posicion(x,y),w)).
+
+%==============================================================================
+%% Eliminación de elementos de una lista
+
+eliminacion(x,[]) = [].
+eliminacion(x,[y|w]) = $IF($ID(x,y),w,[y|eliminacion(x,w)]).
+
+%compara elemento a elemento de una lista, si:
+%x=y: devuelve el resto de la lista sin el elemento y=x
+%otro caso, se vuelve a ejecutar con otro elemento
+
+%==============================================================================
+%% Commprobación de la longitud de una lista
+
+longitud([]) = 0.
+longitud([y|w]) = (1 + longitud(w)).
+
+end_of_list.
+%==============================================================================
+%================================
+%==============================================================================
+
+formula_list(sos).
+
+ 0 != 1.
+ 0 != 2.
+ 0 != 3.
+ 0 != 4.
+ 0 != 5.
+ 0 != 6.
+ 1 != 2.
+ 1 != 3.
+ 1 != 4.
+ 1 != 5.
+ 1 != 6.
+ 2 != 3.
+ 2 != 4.
+ 2 != 5.
+ 2 != 6.
+ 3 != 4.
+ 3 != 5.
+ 3 != 6.
+ 4 != 5.
+ 4 != 6.
+ 5 != 6.
+
+1-1=0.
+0+1=1.
+1+1=2.
+2+1=3.
+3+1=4.
+4+1=5.
+5+1=6.
+
+ % filas(x).
+ % columnas(y).
+ % bomba(x,y).
+ % vacio(x,y).
+
+filas(5).
+columnas(5).
+sensorV(3,2,0).
+sensorH(1,3,2).
+sensorV(4,3,3).
+sensorH(2,2,1).
+sensorV(5,5,2).
+sensorH(4,1,0).
+sensorV(1,1,2).
+
+
+%==============================================================================
+%Generar lista para cada sensor
+all x y z (sensorH(x,y,z) -> candidatas(z, lista_horizontal(x,5))).
+
+all x y z (sensorV(x,y,z) -> candidatas(z, lista_vertical(5,y))).
+%Funciona bien, la (5,4)no es candidata al no estar afectada por ningun sensor
+
+%==============================================================================
+%% eliminacion de sensores
+all x y z w1 w2 k (sensorH(x,y,z) & candidatas(w1,[k|w2])  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+all x y z w1 w2 k (sensorV(x,y,z) & candidatas(w1,[k|w2])  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+
+%==============================================================================
+%% Si hay 0 casillas candidatas, etonces son vacias
+
+all x y w (candidatas(0,[posicion(x,y)|w]) -> vacio(x,y) & candidatas(0,w)).
+
+%==============================================================================
+%% Las casillas vacias no son candidatas a bombas
+
+all x y w1 w2 k (vacio(x,y) & candidatas(w1,[k|w2])  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+
+%==============================================================================
+%% Si hay el mismo numero de candidatas que la longitud de posibles candidatas para
+%% una fila o columna, todas son bombas
+
+all x y z n w ($EQ(longitud([posicion(x,y)|w]),n) & candidatas(n,[posicion(x,y)|w]) -> bomba(x,y) & candidatas((n-1),w)).
+
+%==============================================================================
+%% ver las listas
+%$Ans(lista_horizontal(1,3)).
+
+
+
+end_of_list.
+%==============================================================================
+%================================
+%==============================================================================
+formula_list(passive).
+
+%all w (candidatas(0,w) -> $Ans(candidatas(0,w))).
+%all w (candidatas(1,w) -> $Ans(candidatas(1,w))).
+%all w (candidatas(2,w) -> $Ans(candidatas(2,w))).
+%all w (candidatas(3,w) -> $Ans(candidatas(3,w))).
+%all w (candidatas(4,w) -> $Ans(candidatas(4,w))).
+
+%all x y (vacio(x,y) -> $Ans(vacio(x,y))).
+
+all x y (bomba(x,y) -> $Ans(bomba(x,y))).
+%faltan 2 bombas de la fila 3
+
+end_of_list.
+
+
+
+
+
+%==============================================================================
+%% elimiancion de casillas vacias
+%all x y  w1 w2 (vacio(x,y) & candidatas(w1,w2) -> candidatas(w1,eliminacion(lista_vertical(x,y),w2))).
+%all x y  w1 w2 (vacio(x,y) & candidatas(w1,w2) -> candidatas(w1,eliminacion(lista_horizontal(x,y),w2))).
+%%esto no elimina nada, probar otra forma
+
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,w2)  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,[k|w2])  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,w2)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_horizontal(x,5)]))).
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,w2)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_vertical(5,y)]))).
+
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,w2)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_horizontal(x,5)]))).
+%all x y w1 w2 k (vacio(x,y) & candidata(w1,w2)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_vertical(5,y)]))).
+
+
+%all x y  w1 w2 (vacio(x,y) -> candidatas(w1,eliminacion(lista_vertical(x,y),w2))).
+%all x y  w1 w2 (vacio(x,y) -> candidatas(w1,eliminacion(lista_horizontal(x,y),w2))).
+
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|w2]))).
+
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_horizontal(x,5)]))).
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_vertical(5,y)]))).
+
+
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_horizontal(x,5)]))).
+%all x y w1 w2 k (vacio(x,y)  -> candidatas(w1,eliminacion(posicion(x,y),[k|lista_vertical(5,y)]))).
