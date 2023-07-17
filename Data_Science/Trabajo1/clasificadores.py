@@ -55,74 +55,80 @@ print(" CLASIFICADOR NAIVE BAYES \n")
 # I.1) Implementación de Naive Bayes
 # ----------------------------------
 
+
 # Definir una clase NaiveBayes con la siguiente estructura:
 class NaiveBayes():
     
     ##Inicializar el constructor
     def __init__(self, k = 1):
+
         self.k = k 
         self.entrenamiento = False # Variable lógica (flag). Indica si se ha entrenado el modelo
-    def entrena(self, X,y):
+        self.metodo_clasifica = False # Nos indica si se ha llamado al método clasifica
+   
+    def entrena(self, X, y):
+
         ## Para extraer los atributos y las clases podemos usar unique de numpy 
         ## Asi obtenemos un array sin elementos repetidos
-        atributos = np.unique(X)
+        v_Atributos = np.unique(X)
         clases = np.unique(y)
-        self.atributos = atributos
+        self.v_Atributos = v_Atributos
         self.clases = clases
         d_ej = np.shape(X) [1] # Dimensión de un vector ejemplo de atributos del conjunto de entrenamiento
         ## Entrenar el NaiveBayes significa estimar las probabilidades de cada clase (frecuencia relativa)
         ## y las probabilidades de que se de un atributo dado que tenemos una clase c P(A=v|c)
 
-        ## Se crea para cada clase un vector lógico que indica cúantos elementos hay de dicha clase. 
-        # Contando los elementos no nulos obtenemos la cantidad de elementos de la clase ya que el elemento 
-        # nulo es el que no pertenece a la clase y por tanto no se cuenta.
-        
+        ## Podemos ayudarnos del método map, este sirve cuándo queremos aplicar la misma función a todos los elementos
+        ## de un array, lista , iterable...
         frec_clases = [np.count_nonzero(y == v) for v in clases]
         frec_clases = np.array(list(frec_clases)) # Convertir objeto map a numpy array 
-        #Por lo tanto esto nos dará los elementos de cada clase, es decir su frecuencia
+        
+        ## Los valores de v se cogen de los elementos del array clases. El método lambda es para definir una función anónima.
+        ## Se crea para cada clase un vector lógico que indica cúantos elementos hay de dicha clase. Contando los elementos no nulos obtenemos
+        ## la cantidad de elementos de la clase.
 
-        P_clases = frec_clases/(len(y)) ## Para obtener prob hay que normalizar. Dividimos el número de elementos de cada clase entre el total de elementos
-                                        # y así obtenemos la probabilidad de cada clase 
+        P_clases = frec_clases/(len(y)) ## Para obtener prob hay que normalizar 
 
         ## Ahora hay que estimar la probabilidad de cada atributo dado una clase
         ## Creamos un array tridimensional de numpy para almacenar los valores de las probabilidades.
         ## Para cada clase tenemos un array bidimensional con las probabilidades.
-        P_atributos = np.zeros([len(clases), len(atributos), d_ej]) # Por orden : n clases , n atributos, y dimensión de un ejemplo del conjunto de entrenamiento
+        P_v_Atributos = np.zeros([len(clases), len(v_Atributos), d_ej]) # Por orden : n clases , n v_Atributos, y dimensión de un ejemplo del conjunto de entrenamiento
         ## Para cada clase cogemos un atributo y se cuentan las veces que aparece en cada columna del conjunto de entrenamiento
-        ## esto lo hacemos porque por ejemplo en el ejemplo del tenis hay atributos de distintas columnas con el mismo nombre ( Humedad -> alta , Temp -> alta )
+        ## esto lo hacemos porque por ejemplo en el ejemplo del tenis hay v_Atributos de distintas columnas con el mismo nombre ( Humedad -> alta , Temp -> alta )
 
         i = 0 ## Para indicar los indices
         for t in clases:
             ## Con un bucle recorremos los distintos valores de las clases
-            ## Miramos sólo los ejemplos que correspondan a la clase en cada iter:  X[y == t,]
-            ## Para contar los valores de atributos es igual que antes con las clases , ponemos axis =0 para que cuente 
-            ## la frecuencia de cada valor en cada uno de los atributos ( P ej n de apariciones de soleado en el primera columna, segunda...)
-            frec_atributos = map(lambda v: np.count_nonzero( (X[y == t, ] == v) , axis = 0), atributos )
-            frec_atributos=np.array(list(frec_atributos)) # lo pasamos a array de numpy
-            P_atributos[i, :, :] = frec_atributos
+            ## Miramos sólo los ejemplos que correspondan a la clase de cada iter X[y == t,]
+            ## Para contar los v_Atributos es igual que antes con las clases , ponemos axis =0 para que cuente 
+            ## la frecuencia de los v_Atributos en cada una de las columnas ( P ej n de apariciones de soleado en la primera columna, segunda...)
+            frec_v_Atributos = [ np.count_nonzero( (X[y == t, ] == v) , axis = 0) for v in v_Atributos]
+            frec_v_Atributos=np.array(list(frec_v_Atributos)) # lo pasamos a array de numpy
+            P_v_Atributos[i, :, :] = frec_v_Atributos
             i += 1 # Actualiza indice
         
        
         # Tenemos que calcular probabilidades utilizando suavizado de Laplace.
         # vamos a crear un vector auxiliar
-        P_aux=P_atributos
+        P_aux=P_v_Atributos
         P_aux=np.sum(P_aux, axis = 0) ## Sumamos los arrays bidimensionales para quedarnos con una sola matriz. En las posiciones no nulas hay que aplicar suavizado
         P_aux= P_aux > 0  # creamos una máscara que nos dice en que posiciones hay que aplicar Suavizado 
         
         #Calculamos el número de posibles valores para cada atributo. Contamos los valores no nulos para cada columna de la máscara 
         A= np.count_nonzero(P_aux, axis = 0)
       
-        P_atributos = P_atributos + self.k * P_aux
+        P_v_Atributos = P_v_Atributos + self.k * P_aux
         for t in range(len(clases)):
-            P_atributos[t, :, :] = P_atributos[t, :, :] / [frec_clases[t] + self.k*A] 
+            P_v_Atributos[t, :, :] = P_v_Atributos[t, :, :] / [frec_clases[t] + self.k*A] 
         
-        self.P_atributos = P_atributos
+        self.P_v_Atributos = P_v_Atributos
         self.P_clases = P_clases
-        P_atributos_df = pd.DataFrame(P_atributos[0,:,:], index= atributos)
         self.entrenamiento = True # Entrenamiento realizado
-        return P_atributos, P_clases
+        
+        
         
         ## Metodo clasifica
+    
     def clasifica_prob(self, ejemplo):
 
         if not self.entrenamiento:
@@ -130,20 +136,31 @@ class NaiveBayes():
         # Hay que ver los atributos del ejemplo en qué posicion estan en nuestro 
         # array de probabilidades
         d_ej = np.shape(ejemplo)[0]
-        d_clases = len(self.clases)
+        d_clase = len(self.clases)
 
-        pos = [np.where(self.atributos == v)[0][0] for v in ejemplo]
+        pos = [np.where(self.v_Atributos == v)[0][0] for v in ejemplo]
         # Con pos podemos acceder a las posiciones de la matriz de prob.
 
 
         # Ahora Para cada clase calculamos las logprob
-        suma_logprob=np.zeros(d_clases)
-        dic_prob= dict.fromkeys(self.clases) # Creamos diccionario
+        suma_logprob=np.zeros(d_clase)
+        #aux_log es un array auxiliar para hacer más legible el codigo. Es una matriz con numero de 
+        # filas igual al numero de clases y con numero de columnas igual al numero de atributos (dimension de un ejemplo)
+        # Cada elemento de una fila es igual a log(P(Ai=vi|c)). Se tiene que sumar todos los elementos por
+        # filas para quedarnos con un vector de dimensión el numero de clases. 
+        # Esto se consigue con np.sum(aux_log , axis = 1), dónde cada elemento de ese vector sera sum_i(log(P(Ai=vi|c)))
+        # De esta manera podemos calcular las logprob para cada clase con sumas vectoriales de una vez
+        aux_log = np.log(self.P_v_Atributos[:, pos, range(d_ej)])
+        suma_logprob = np.log(self.P_clases) + np.sum(aux_log , axis = 1)
 
-        for t in range(len(self.clases)):
-            suma_logprob[t]= np.log(self.P_clases[t]) + np.sum(np.log(self.P_atributos[t, pos, range(d_ej)]))
-            dic_prob[self.clases[t]]=np.exp(suma_logprob[t])
+        # Si el metodo clasifica ha llamado a este método, nos interesa solo las logprob para hallar el máximo 
+        # (la clase que hace máxima la suma de las logprob)
+        if self.metodo_clasifica:
+            self.metodo_clasifica = False # Volvemos a poner en False hasta que vuelva a ser llamado
+            return suma_logprob
         
+
+        dic_prob= dict(zip(self.clases, np.exp(suma_logprob) )) # Creamos diccionario
         # Normalizar los valores del diccionario
         cte_norm = 1/np.sum(np.exp(suma_logprob))
         dic_prob.update((key,v*cte_norm) for key,v in dic_prob.items())
@@ -151,12 +168,39 @@ class NaiveBayes():
 
         #resultado
         return dic_prob
-    
     ## Metodo Clasifica. Se le da un ejemplo y devuelve su clase.
     def clasifica(self,ejemplo):
-        ## Llamamos a la clase anterior para obtener el diccionario
-        diccionario = self.clasifica_prob(ejemplo)
-        return max(diccionario , key=self.dic_prob.get)
+
+        self.metodo_clasifica = True 
+        logprob = self.clasifica_prob(ejemplo)
+        # Con argmax podemos obtener la posicion del maximo (indice) dentro de un vector
+        pos_max = np.argmax(logprob)
+        # Devolvemos la clase con mayor probabilidad
+        return ( self.clases[pos_max] )
+    
+    def obtener_df(self):
+        #-------------------------------------------------------------------------------------------
+        # Metodo para visualizar la matriz de probabilidades que se calcula en el entrenamiento
+        # Cada fila representa un valor que pueden tomar los atributos
+        # Cada columna representa un atributo
+        # Hay una matriz de este tipo para cada clase
+        # Un elemento de esta matriz (P_ij) represertaria la probabilidad de tener el valor i en el atributo j dado una clase
+        # P(Aj=vi|c)
+        #--------------------------------------------------------------------------------------------
+
+        # Devolvemos clasificador no entrenado si es necesario
+        if not self.entrenamiento:
+            raise ClasificadorNoEntrenado('No se ha entrenado el modelo')
+        
+        # Para cada clase devolvemos un dataframe
+        for t in range(len(self.clases)):
+            print('La clase c =',self.clases[t],'tiene una probabilidad P(c)=',self.P_clases[t])
+            print('La matriz de probabilidades es...')
+            P_atributos_df = pd.DataFrame(self.P_v_Atributos[t,:,:], index= self.v_Atributos)
+            print(P_atributos_df)
+
+
+
 # * El constructor recibe como argumento la constante k de suavizado (por
 #   defecto 1) 
 # * Método entrena, recibe como argumentos dos arrays de numpy, X e y, con los
@@ -172,11 +216,20 @@ class NaiveBayes():
 # Si se llama a los métodos de clasificación antes de entrenar el modelo, se
 # debe devolver (con raise) una excepción:
 
-class ClasificadorNoEntrenado(Exception): pass
+class ClasificadorNoEntrenado(Exception): 
+    pass
 
   
 # Ejemplo "jugar al tenis":
+import importlib.util
+archivo_tenis = 'data.jugar_tenis'
 
+# Importa el módulo "votos.py"
+tenis = importlib.import_module(archivo_tenis)
+
+# guardamos los arrays de votos.py en variables para poder usarlos en el archivo actual
+X_tenis = tenis.X_tenis
+y_tenis = tenis.y_tenis
 
 # >>> nb_tenis=NaiveBayes(k=0.5)
 # >>> nb_tenis.entrena(X_tenis,y_tenis)
@@ -185,6 +238,14 @@ class ClasificadorNoEntrenado(Exception): pass
 # {'no': 0.7564841498559081, 'si': 0.24351585014409202}
 # >>> nb_tenis.clasifica(ej_tenis)
 # 'no'
+
+nb_tenis = NaiveBayes(k =  0.5)
+nb_tenis.entrena(X_tenis,y_tenis)
+ej_tenis=np.array(['Soleado','Baja','Alta','Fuerte'])
+nb_tenis.clasifica_prob(ej_tenis)
+nb_tenis.clasifica(ej_tenis)
+
+
 
 # ----------------------------------------------
 # I.2) Implementación del cálculo de rendimiento
@@ -248,15 +309,38 @@ def divide_entrenamiento_prueba(X,y,porcentaje_entrenamiento):
     return Xe,Xt,ye,yt
 
 
-#-----------------------------------------------------------------
-# Votos de congresistas
-#-----------------------------------------------------------------
+# Definimos una función para ajustar el hiperpárametro k (cte de suavizado)
+
+def ajustek(vec_k, Xe, ye , Xt ,yt ,  dic_out = False):
+    # * --------------------------------------------------------------------------------------
+    # * vec_k : Vector con diferentes valores de k 
+    # * Xe, ye : Datos y valores de clasificacion respectivamente ( para entrenar clasificador)
+    # * Xt, yt : Lo mismo para conjunto de test
+    # * dic_out : Indica si queremos que saque el diccionario con los distintos valores de k y su rendimiento por pantalla
+    # *---------------------------------------------------------------------------------------
+    # Para almacenar los resultados creamos un diccionario, las claves seran los valores de k y los valores
+    # el valor del rendimiento
+    dic_rend = dict.fromkeys(vec_k)
+    for k in vec_k:
+        clf = NaiveBayes(k = k)
+        clf.entrena(Xe, ye)
+        dic_rend[k] = rendimiento(clf, Xt , yt)
+    kmax = max(dic_rend, key=dic_rend.get)
+    print ('El mejor rendimiento es ', dic_rend[kmax], ' para k = ', kmax)
+    if dic_out:
+        return dic_rend
+    else:
+        return kmax
+
+
+
+
 
 #-----------------------------------------------------------------
 # Votos de congresistas
 #-----------------------------------------------------------------
 
-print("Votos de congresistas US:")
+print(" \n Votos de congresistas US:\n")
 
 # usamos la libreria importlib.util para poder importar el módulo votos.py
 # que se encuentra en la carpeta data
@@ -273,20 +357,28 @@ votos_clasif=votos.clasif
 #dividimos los datos en entrenamiento y prueba
 Xe_votos,Xt_votos,ye_votos,yt_votos=divide_entrenamiento_prueba(votos_datos,votos_clasif,0.7)
 
+kvec = np.arange(0.5, 5, 0.5)
+k_max= ajustek(kvec, Xe_votos, ye_votos, Xt_votos, yt_votos) # El mejor rendimiento para k = 0.5
+
 # Entrenamos un modelo NB
-NB_votos = NaiveBayes()
+print('Entrenamos modelo para k = ',k_max)
+NB_votos = NaiveBayes(k = k_max)
 NB_votos.entrena(Xe_votos, ye_votos)
-print('El rendimiento en el conjunto de entrenamiento')
+
+print('\nEl rendimiento en el conjunto de entrenamiento')
 print(rendimiento(NB_votos, Xe_votos, ye_votos))
 print('El rendimiento en el conjunto de test')
 print(rendimiento(NB_votos, Xt_votos, yt_votos))
 
 
-# --------------------------------------------------------
-# Conjunto de datos de credito
-# --------------------------------------------------------
 
-print('Conjunto de datos de crédito:')
+
+
+
+
+
+
+print('\nConjunto de datos de crédito:\n')
 
 archivo_credito = 'data.credito'
 credito = importlib.import_module(archivo_credito)
@@ -297,14 +389,20 @@ y_credito = credito.y_credito
 #dividimos los datos en entrenamiento y prueba
 Xe_credito,Xt_credito,ye_credito,yt_credito=divide_entrenamiento_prueba(X_credito, y_credito ,0.7)
 
+
+# Vemos cúal es el mejor valor de K
+k_max = ajustek(kvec, Xe_credito, ye_credito, Xt_credito, yt_credito) # Mejor para k = 2
+
+
 # Entrenamos un modelo NB
-NB_credito = NaiveBayes()
+print('Entrenamos el modelo para k = ', k_max)
+NB_credito = NaiveBayes(k = k_max)
 NB_credito.entrena(Xe_credito, ye_credito)
 
 
-print('El rendimiento en el conjunto de entrenamiento')
+print('\nEl rendimiento en el conjunto de entrenamiento')
 print(rendimiento(NB_credito, Xe_credito, ye_credito))
-print('El rendimiento en el conjunto de test')
+print('El rendimiento en el conjunto de test ')
 print(rendimiento(NB_credito, Xt_credito, yt_credito))
 
 
@@ -390,24 +488,25 @@ vocabulario = vectorizador.get_feature_names_out()
 vec_text= vec_text.toarray()
 vec_text_test = vec_text_test.toarray()
 #print(vec_text_test)
+k_max= ajustek(kvec, vec_text, yimdb_train, vec_text_test, yimdb_test)
+print('Entrenamos el modelo para k = ', k_max)
 
-
-NB_text = NaiveBayes()
+NB_text = NaiveBayes(k = k_max)
 NB_text.entrena(vec_text , yimdb_train )
 
-print('La precisión en el conjunto de test es:')
+print('\nLa precisión en el conjunto de test es:')
 print(rendimiento(NB_text, vec_text_test, yimdb_test ))
 print('La precisión en el conjunto de entrenamiento es:')
 print(rendimiento(NB_text, vec_text, yimdb_train))
 
 # Con scikit learn sale el mismo rendimiento
 from sklearn.naive_bayes import CategoricalNB
-nb_cat = CategoricalNB()
-print('La precisión en el conjunto de entrenamiento de NB_categorico sklearn:')
+nb_cat = CategoricalNB(alpha= k_max)
+print('La precisión en el conjunto de test de NB_categorico sklearn:')
 nb_cat.fit(vec_text, yimdb_train)
 print(nb_cat.score(vec_text_test, yimdb_test))
 # 0.795
-print('La precisión en el conjunto de test de NB_categorico sklearn:')
+print('La precisión en el conjunto de entrenamiento de NB_categorico sklearn:')
 print(nb_cat.score(vec_text, yimdb_train))
 #0.8345
 
@@ -512,24 +611,27 @@ class RegresionLogisticaMiniBatch():
         
         if not self.entrenamiento:
             raise ClasificadorNoEntrenado('No se ha entrenado el modelo')
-        ejemplo=np.array(ejemplo)
+        
         self.ejemplo=ejemplo
+        
+        #Si es necesario normalizamos el ejemplo de entrada que queremos clasificar
+
+        if self.normalizacion:
+           self.ejemplo=(self.ejemplo-self.media)/self.std
+       
         pos= np.where(self.X==self.ejemplo)
         self.pos=pos
 
         # calculamos la probabilidad de pertenencia a una clase del ejemplo con la función sigmoide
         self.probabilidad=self.sigmoide(np.dot(self.ejemplo,self.pesos))
         #Creamos un diccionario con la probabilidad, la clave asignada es irrelevante
-        probabilidad_dict = {1: float(self.probabilidad)} 
+        probabilidad_dict = {1: float(self.probabilidad) } 
         self.probabilidad_dict=probabilidad_dict
 
         return self.probabilidad_dict
 
     def clasifica(self,ejemplo):
         self.ejemplo=ejemplo 
-        #Si es necesario normalizamos el ejemplo de entrada que queremos clasificar
-        if self.normalizacion:
-           self.ejemplo=(self.ejemplo-self.media)/self.std
 
         #Obtenemos la probabilidad de pertenencia a la clase 1 del ejemplo mediante un diccionario
         self.probabilidad_dict=self.clasifica_prob(self.ejemplo)
@@ -689,6 +791,7 @@ class RL_OvR():
       self.rate=rate
       self.rate_decay=rate_decay
       self.batch_tam=batch_tam
+      self.entrenamiento = False
       self.clasificadores = {}  # Diccionario para almacenar los clasificadores binarios
 
 
@@ -700,10 +803,7 @@ class RL_OvR():
         self.X=X
         self.y=y
         self.n_epochs=n_epochs
-        indices=list(range(len(X)))
-        self.indices=indices
-        rango_pesos=np.random.uniform(-0.1,0.1,len(X[0]))
-        self.rango_pesos=rango_pesos
+
 
         # usamos el clasificador binario del apartado anterior para cada clase posible
 
@@ -718,11 +818,13 @@ class RL_OvR():
 
             # Guardamos cada modelo (ya entrenado) en un diccionario. La clave para acceder a cada uno es la clase que entrena
             self.clasificadores[clase] = self.clf_log
-
-
-
+            self.entrenamiento = True # Entrenamiento realizado 
 
     def clasifica(self,ejemplo):
+
+        if not self.entrenamiento:
+            raise ClasificadorNoEntrenado('No se ha entrenado el modelo')
+        
         self.ejemplo=ejemplo
         probabilidades = {}
         # Clasificamos el ejemplo con cada clasificador binario
